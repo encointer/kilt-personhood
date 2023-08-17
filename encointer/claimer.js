@@ -77,6 +77,7 @@ export async function generatePoPCredential(
         )
     );
     const validUntil = await getTimestampOfNextRegisteringPhase(api);
+    console.log(validUntil.toString());
 
     const proofsHex = api.registry
         .createType("Vec<ProofOfAttendance>", proofs)

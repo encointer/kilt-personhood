@@ -6,6 +6,7 @@ import {
 import assert from "assert";
 import crypto from "crypto";
 import base58 from "bs58";
+import { BN } from "bn.js";
 
 export async function parseEvents(api, blockHash) {
     const signedBlock = await api.rpc.chain.getBlock(blockHash);
@@ -171,26 +172,23 @@ export async function getProofOfAttendance(api, attendee, cid, cindex) {
 }
 
 export async function getTimestampOfNextRegisteringPhase(api) {
-    let phaseDurations = (
-        await api.query.encointerScheduler.phaseDurations.entries()
-    ).reduce((acc, [key, value]) => {
-        acc[key] = value;
-        return acc;
-    }, {});
+    let phaseDurations =
+        await api.query.encointerScheduler.phaseDurations.multi([
+            "Assigning",
+            "Attesting",
+        ]);
+
     let currentPhase = (
         await api.query.encointerScheduler.currentPhase()
     ).toPrimitive();
     let nextPhaseTimestamp = (
         await api.query.encointerScheduler.nextPhaseTimestamp()
-    ).toPrimitive();
+    ).toString();
+    nextPhaseTimestamp = new BN(nextPhaseTimestamp);
     if (currentPhase === "Attesting") return nextPhaseTimestamp;
     if (currentPhase === "Assigning")
-        return nextPhaseTimestamp + phaseDurations["Attesting"];
-    return (
-        nextPhaseTimestamp +
-        phaseDurations["Assigning"] +
-        phaseDurations["Attesting"]
-    );
+        return nextPhaseTimestamp.add(phaseDurations[1]);
+    return nextPhaseTimestamp.add(phaseDurations[0]).add(phaseDurations[1]);
 }
 
 export const getCurrentCindex = async (api) =>
